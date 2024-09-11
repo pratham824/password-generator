@@ -1,30 +1,6 @@
-import random
-import string
 import hashlib
-from itertools import product
 
-# Generate a random password
-def generate_password(length=12):
-    characters = string.ascii_letters + string.digits + string.punctuation
-    password = ''.join(random.choice(characters) for _ in range(length))
-    return password
-
-# Check password strength
-def check_password_strength(password):
-    length = len(password)
-    has_upper = any(char.isupper() for char in password)
-    has_lower = any(char.islower() for char in password)
-    has_digit = any(char.isdigit() for char in password)
-    has_special = any(char in string.punctuation for char in password)
-
-    if length >= 8 and has_upper and has_lower and has_digit and has_special:
-        return "Strong"
-    elif length >= 6 and (has_upper or has_lower) and (has_digit or has_special):
-        return "Moderate"
-    else:
-        return "Weak"
-
-# Hash a password using the specified algorithm
+# Password ko hash karne ka function (MD5, SHA1, SHA256 ke liye)
 def hash_password(password, algorithm='sha256'):
     if algorithm == 'md5':
         return hashlib.md5(password.encode()).hexdigest()
@@ -33,52 +9,38 @@ def hash_password(password, algorithm='sha256'):
     else:
         return hashlib.sha256(password.encode()).hexdigest()
 
-# Crack the password using a wordlist
-def password_crack(wordlist, hashed_password, algorithm='sha256'):
-    for word in wordlist:
-        if hash_password(word, algorithm) == hashed_password:
-            return word
+# Wordlist-based password cracking function
+def crack_password(hash_to_crack, algorithm='sha256', wordlist_file='wordlist.txt'):
+    try:
+        with open(wordlist_file, 'r') as file:
+            for word in file:
+                word = word.strip()  # Remove extra spaces or newline
+                hashed_word = hash_password(word, algorithm)
+                
+                if hashed_word == hash_to_crack:
+                    print(f"[+] Password found: {word}")
+                    return word
+        print("[-] Password not found in wordlist.")
+    except FileNotFoundError:
+        print("[-] Wordlist file not found. Please provide a valid wordlist.")
     return None
 
-# Brute force password cracking
-def brute_force_crack(hashed_password, algorithm='sha256', max_length=5):
-    characters = string.ascii_letters + string.digits + string.punctuation
-    for length in range(1, max_length + 1):
-        for guess in product(characters, repeat=length):
-            guess = ''.join(guess)
-            if hash_password(guess, algorithm) == hashed_password:
-                return guess
-    return None
-
-# Generate a strong password
-def generate_strong_password(length=12):
-    characters = string.ascii_letters + string.digits + string.punctuation
-    while True:
-        password = ''.join(random.choice(characters) for _ in range(length))
-        if check_password_strength(password) == "Strong":
-            return password
-
-# Main function to demonstrate the tool's functionality
+# Main function
 def main():
-    # Generate password
-    password = generate_password()
-    print("Generated Password:", password)
-    print("Password Strength:", check_password_strength(password))
-
-    # Hash the password
-    hashed_password = hash_password(password, 'sha256')
-    print("Hashed Password (SHA-256):", hashed_password)
-
-    # Wordlist for cracking
-    wordlist = ['password', '123456', 'admin', 'qwerty', password]
-
-    # Attempt to crack the password using wordlist
-    cracked_password = password_crack(wordlist, hashed_password)
-    print("Cracked Password (Wordlist):", cracked_password if cracked_password else "Not Found")
-
-    # Attempt brute force cracking
-    brute_forced_password = brute_force_crack(hashed_password)
-    print("Cracked Password (Brute Force):", brute_forced_password if brute_forced_password else "Not Found")
+    # User input ke liye hashed password aur algorithm ko input liya jaa raha hai
+    hash_to_crack = input("Enter the hashed password to crack: ")
+    algorithm = input("Enter the hashing algorithm (md5, sha1, sha256): ").lower()
+    wordlist_file = input("Enter the wordlist file path (default: wordlist.txt): ") or 'wordlist.txt'
+    
+    print(f"\n[+] Trying to crack the {algorithm.upper()} hash: {hash_to_crack}")
+    
+    # Crack password
+    cracked_password = crack_password(hash_to_crack, algorithm, wordlist_file)
+    
+    if cracked_password:
+        print(f"\n[+] Successfully cracked: {cracked_password}")
+    else:
+        print("\n[-] Could not crack the password.")
 
 if __name__ == "__main__":
     main()
