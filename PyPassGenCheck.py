@@ -1,46 +1,52 @@
-import hashlib
+import subprocess
+import sys
+import os
 
-# Password ko hash karne ka function (MD5, SHA1, SHA256 ke liye)
-def hash_password(password, algorithm='sha256'):
-    if algorithm == 'md5':
-        return hashlib.md5(password.encode()).hexdigest()
-    elif algorithm == 'sha1':
-        return hashlib.sha1(password.encode()).hexdigest()
+# Subdomain Enumeration with Subfinder (Install: go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest)
+def subdomain_enumeration(target):
+    print(f"\n[+] Performing Subdomain Enumeration on {target}...")
+    result = subprocess.run(['subfinder', '-d', target, '-silent'], capture_output=True, text=True)
+    subdomains = result.stdout.splitlines()
+    if subdomains:
+        print(f"[+] Subdomains Found: {len(subdomains)}")
+        for subdomain in subdomains:
+            print(subdomain)
+        return subdomains
     else:
-        return hashlib.sha256(password.encode()).hexdigest()
+        print("[-] No Subdomains Found.")
+    return []
 
-# Wordlist-based password cracking function
-def crack_password(hash_to_crack, algorithm='sha256', wordlist_file='wordlist.txt'):
-    try:
-        with open(wordlist_file, 'r') as file:
-            for word in file:
-                word = word.strip()  # Remove extra spaces or newline
-                hashed_word = hash_password(word, algorithm)
-                
-                if hashed_word == hash_to_crack:
-                    print(f"[+] Password found: {word}")
-                    return word
-        print("[-] Password not found in wordlist.")
-    except FileNotFoundError:
-        print("[-] Wordlist file not found. Please provide a valid wordlist.")
-    return None
+# Port Scanning with Nmap (Install: sudo apt install nmap)
+def port_scanning(target):
+    print(f"\n[+] Performing Port Scanning on {target}...")
+    result = subprocess.run(['nmap', '-sS', '-T4', '-p-', target], capture_output=True, text=True)
+    print(result.stdout)
 
-# Main function
+# HTTP Status Code Checker using httpx (Install: go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest)
+def check_http_status(subdomains):
+    print("\n[+] Checking HTTP Status Codes for Subdomains...")
+    for subdomain in subdomains:
+        result = subprocess.run(['httpx', '-silent', '-status-code', '-title', subdomain], capture_output=True, text=True)
+        if result.stdout:
+            print(result.stdout.strip())
+
+# Main function for target input and tool selection
 def main():
-    # User input ke liye hashed password aur algorithm ko input liya jaa raha hai
-    hash_to_crack = input("Enter the hashed password to crack: ")
-    algorithm = input("Enter the hashing algorithm (md5, sha1, sha256): ").lower()
-    wordlist_file = input("Enter the wordlist file path (default: wordlist.txt): ") or 'wordlist.txt'
+    if len(sys.argv) != 2:
+        print("Usage: python recon_tool.py <target>")
+        sys.exit(1)
     
-    print(f"\n[+] Trying to crack the {algorithm.upper()} hash: {hash_to_crack}")
+    target = sys.argv[1]
     
-    # Crack password
-    cracked_password = crack_password(hash_to_crack, algorithm, wordlist_file)
+    # Step 1: Subdomain Enumeration
+    subdomains = subdomain_enumeration(target)
     
-    if cracked_password:
-        print(f"\n[+] Successfully cracked: {cracked_password}")
-    else:
-        print("\n[-] Could not crack the password.")
+    # Step 2: HTTP Status Code Checking
+    if subdomains:
+        check_http_status(subdomains)
+    
+    # Step 3: Port Scanning (can be optional or run separately)
+    port_scanning(target)
 
 if __name__ == "__main__":
     main()
